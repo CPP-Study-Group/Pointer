@@ -113,3 +113,107 @@ int main()
 输出：
 指针函数：aaa
 
+
+野指针：
+所谓的野指针指的是一个指针变量指向了不可使用的内存空间。
+
+产生野指针三个原因：
+
+（1）指针变量创建时候没有被初始化：任何指针变量在创建的时候，不会自动成为NULL指针，它的默认值是随机的，因此该指针就会成为一个野指针，可能指向一块不可使用的内存空间。
+
+         例如char *p;  这样创建一个指针p，指向一个随机的内存地址空间
+
+         所以指针在创建的时候要被初始化，可以讲其初始化为NULL，或指向合法的内存空间
+
+         比如 char *p = NULL ; 或 char *p = new char; //这个时候p就不会是一个野指针
+
+（2）delete或free指针之后没有把指针设置为NULL：delete和free只是把指针所指的内存空间释放掉，而没有对指针本身进行释放。
+
+         比如char *p = new char(4) ; delete[] p; //这时候指针p所指的内存空间被释放，但是指针p本身不为空，但是指针p所指向的内存空间已经不能使用，造成了野指针。正确的做法是及时的把指针p赋值为NULL
+
+         例如下面这个程序
+
+char *p = (char *)malloc(100);
+
+strcpy(*p, "hello");
+
+free(p);
+
+if(p != NULL){
+
+      printf("not NULL\n");
+
+}
+
+结果输出”not NULL“，验证上面的结论，应该在free之后马上把p = NULL。
+
+（3）指针操作超过了指向内存空间的作用范围：当指针越界之后也会变成一个野指针
+
+
+ 空指针
+
+空指针是一种特殊的指针，表示当前这个指针变量处于空闲状态，没有指向任何有意义的内存空间。
+
+C++中用NULL来表示空指针，NULL是一个符号常量值为0。
+
+
+智能指针：
+
+       C++程序设计中使用堆内存是非常频繁的操作，堆内存的申请和释放都由程序员自己管理。程序员自己管理堆内存可以提高了程序的效率，但是整体来说堆内存的管理是麻烦的，C++11中引入了智能指针的概念，方便管理堆内存。使用普通指针，容易造成堆内存泄露（忘记释放），二次释放，程序发生异常时内存泄露等问题等，使用智能指针能更好的管理堆内存。
+
+理解智能指针需要从下面三个层次：
+
+1. 从较浅的层面看，智能指针是利用了一种叫做RAII（资源获取即初始化）的技术对普通的指针进行封装，这使得智能指针实质是一个对象，行为表现的却像一个指针。
+2. 智能指针的作用是防止忘记调用delete释放内存和程序异常的进入catch块忘记释放内存。另外指针的释放时机也是非常有考究的，多次释放同一个指针会造成程序崩溃，这些都可以通过智能指针来解决。
+3. 智能指针还有一个作用是把值语义转换成引用语义。C++和Java有一处最大的区别在于语义不同，
+在Java里面下列代码：
+　　Animal a = new Animal();
+　　Animal b = a;
+   这里其实只生成了一个对象，a和b仅仅是把持对象的引用而已。
+   但在C++中不是这样，
+    Animal a;
+    Animal b = a;
+    这里却是就是生成了两个对象。
+智能指针在C++11版本之后提供，包含在头文件<memory>中，shared_ptr、unique_ptr、weak_pt
+    
+shared_ptr多个指针指向相同的对象。shared_ptr使用引用计数，每一个shared_ptr的拷贝都指向相同的内存。每使用他一次，内部的引用计数加1，每析构一次，内部的引用计数减1，减为0时，自动删除所指向的堆内存。shared_ptr内部的引用计数是线程安全的，但是对象的读取需要加锁。注意避免循环引用
+
+#include <iostream>
+#include <memory>
+
+int main() {
+    {
+        int a = 10;
+        std::shared_ptr<int> ptra = std::make_shared<int>(a);
+        std::shared_ptr<int> ptra2(ptra); //copy
+        std::cout << ptra.use_count() << std::endl;
+        
+        int b = 20;
+        //std::shared_ptr<int> ptrb = pb;  //error
+        std::shared_ptr<int> ptrb = std::make_shared<int>(b);
+        ptra2 = ptrb; //assign
+        
+        std::cout << ptra.use_count() << std::endl;
+        std::cout << ptrb.use_count() << std::endl;
+    }
+}
+输出：
+2
+1
+2
+
+unique_ptr“唯一”拥有其所指对象，同一时刻只能有一个unique_ptr指向给定对象（通过禁止拷贝语义、只有移动语义来实现）。
+
+#include <iostream>
+#include <memory>
+
+int main() {
+    {
+        std::unique_ptr<int> uptr(new int(10));  //绑定动态对象
+        //std::unique_ptr<int> uptr2 = uptr;  //不能賦值
+        //std::unique_ptr<int> uptr2(uptr);  //不能拷貝
+        std::unique_ptr<int> uptr2 = std::move(uptr); //轉換所有權
+        uptr2.release(); //释放所有权
+    }
+    //超過uptr的作用域，內存釋放
+}
